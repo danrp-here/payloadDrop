@@ -44,10 +44,12 @@ class PayloadMavBridge(Node):
         self.pub_att   = self.create_publisher(Vector3, '/state/attitude', 10)
         self.pub_rates = self.create_publisher(Vector3, '/state/rates', 10)
         self.pub_vel   = self.create_publisher(Float32, '/state/vel', 10)
+        self.pub_target_ned = self.create_publisher(Point, '/cmd/target_ned', 10)  # for LLA conversion
 
-        # Subscribers (either 2-servo Vector3 or 4-servo Float32MultiArray)
+        # Subscribers
         self.create_subscription(Vector3, '/cmd/surfaces_norm_vec', self.cb_two_servo, 10)
         self.create_subscription(Float32MultiArray, '/cmd/surfaces_norm_4', self.cb_four_servo, 10)
+        self.create_subscription(Point, '/cmd/target_lla', self.cb_target_lla, 10)  # NEW: lat/lon/alt in, NED out
 
         # NED origin
         self.origin_set = False
@@ -57,7 +59,7 @@ class PayloadMavBridge(Node):
         self.create_timer(0.02, self.poll)  # 50 Hz
         self.create_timer(1.0,  self.send_heartbeat)
 
-    # Heartbeat to be nice on the link
+    # Heartbeat
     def send_heartbeat(self):
         self.mav.mav.heartbeat_send(
             mavutil.mavlink.MAV_TYPE_GCS,
@@ -70,21 +72,15 @@ class PayloadMavBridge(Node):
 
     # 2-servo Vector3: x=left, y=right
     def cb_two_servo(self, msg: Vector3):
-        try:
-            l = self.norm_to_pwm(msg.x); r = self.norm_to_pwm(msg.y)
-            self.do_set_servo(self.servo_left, l)
-            self.do_set_servo(self.servo_right, r)
-        except Exception as e:
-            self.get_logger().error(f'2-servo send err: {e}')
+        l = self.norm_to_pwm(msg.x); r = self.norm_to_pwm(msg.y)
+        self.do_set_servo(self.servo_left, l)
+        self.do_set_servo(self.servo_right, r)
 
     # 4-servo Float32MultiArray: [s1,s2,s3,s4]
     def cb_four_servo(self, msg: Float32MultiArray):
-        try:
-            vals = list(msg.data)[:4]
-            for idx, val in zip(self.servo_idx4, vals):
-                self.do_set_servo(idx, self.norm_to_pwm(val))
-        except Exception as e:
-            self.get_logger().error(f'4-servo send err: {e}')
+        vals = list(msg.data)[:4]
+        for idx, val in zip(self.servo_idx4, vals):
+            self.do_set_servo(idx, self.norm_to_pwm(val))
 
     def do_set_servo(self, servo_index: int, pwm_us: int):
         self.mav.mav.command_long_send(
@@ -98,8 +94,7 @@ class PayloadMavBridge(Node):
     # Simple LLH→NED
     def llh_to_ned(self, lat_deg, lon_deg, alt_m):
         if not self.origin_set:
-            self.lat0, self.lon0, self.alt0 = lat_deg, lon_deg, alt_m
-            self.origin_set = True
+            self.get_logger().warn('Origin not set yet (waiting for first GPS). Target will be 0,0,0 until GPS arrives.')
             return 0.0, 0.0, 0.0
         dlat = math.radians(lat_deg - self.lat0)
         dlon = math.radians(lon_deg - self.lon0)
@@ -108,6 +103,12 @@ class PayloadMavBridge(Node):
         east  = dlon * R_EARTH * math.cos(lat0)
         down  = (alt_m - self.alt0)
         return north, east, down
+
+    def cb_target_lla(self, msg: Point):
+        # msg.x=lat(deg), msg.y=lon(deg), msg.z=alt(m)
+        n,e,d = self.llh_to_ned(msg.x, msg.y, msg.z)
+        p = Point(); p.x=float(n); p.y=float(e); p.z=float(d)
+        self.pub_target_ned.publish(p)
 
     # MAVLink polling
     def poll(self):
@@ -121,11 +122,19 @@ class PayloadMavBridge(Node):
                 self.pub_att.publish(att); self.pub_rates.publish(rates)
             elif t == 'GPS_RAW_INT' and msg.get_srcSystem() == self.sysid:
                 lat = msg.lat / 1e7; lon = msg.lon / 1e7; alt = msg.alt / 1000.0
-                n,e,d = self.llh_to_ned(lat, lon, alt)
+                if not self.origin_set:
+                    self.lat0, self.lon0, self.alt0 = lat, lon, alt
+                    self.origin_set = True
+                    self.get_logger().info(f'NED origin set: lat0={self.lat0:.7f}, lon0={self.lon0:.7f}, alt0={self.alt0:.1f} m')
+                # publish pose
+                dlat = math.radians(lat - self.lat0)
+                dlon = math.radians(lon - self.lon0)
+                lat0 = math.radians(self.lat0)
+                n = dlat * R_EARTH
+                e = dlon * R_EARTH * math.cos(lat0)
+                d = (alt - self.alt0)
                 pose = Point(); pose.x = float(n); pose.y = float(e); pose.z = float(d)
                 self.pub_pose.publish(pose)
-                v = Float32(); v.data = 0.0
-                self.pub_vel.publish(v)
 
 def main():
     rclpy.init()

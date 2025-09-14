@@ -1,1 +1,1 @@
-See top-level README for wiring; this sketch targets MPU6050 + TinyGPS++ and 4 servos.
+ESP32 firmware is unchanged from v2; it already supports 4 servos and MAVLink UART2.

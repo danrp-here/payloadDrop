@@ -30,3 +30,32 @@ ros2 launch payload_ground_stack stack_2servo.launch.py   conn_url:=/dev/ttyUSB1
 ## Radios & Antennas (433 MHz)
 - Pair of **SiK 433 MHz** radios (air + ground) with **433 MHz whip/dipole** antennas (λ/4 ≈ 17.3 cm).
 - Start: **AirSpeed 32 kbps**, **Serial 57600**, **ECC ON**, **NETID unique**, **Tx power per local rules**.
+
+# Quick Commands: Navigate There
+
+After launching the stack, you can command waypoints directly:
+
+## By Latitude/Longitude/Altitude
+```bash
+ros2 run payload_ground_stack nav_to -- <lat_deg> <lon_deg> <alt_m>
+# example:
+ros2 run payload_ground_stack nav_to -- -6.8930 107.6100 750
+```
+
+## By Local NED (meters, origin = first GPS fix)
+```bash
+ros2 run payload_ground_stack nav_to_ned -- <north_m> <east_m> <down_m>
+# example: 300 m east of origin
+ros2 run payload_ground_stack nav_to_ned -- 0 300 0
+```
+
+## Hold Here (sets target to current pose)
+```bash
+ros2 run payload_ground_stack nav_here
+```
+
+You can watch the active target on:
+- `/state/target_ned` (published by guidance_node)
+- `/state/pose_ned` (current NED position)
+
+Tip: Wait until the bridge logs **"NED origin set"** before using `nav_to` (LLA).

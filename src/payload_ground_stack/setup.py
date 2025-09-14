@@ -4,7 +4,7 @@ package_name = 'payload_ground_stack'
 
 setup(
     name=package_name,
-    version='0.2.0',
+    version='0.3.0',
     packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='You',
     maintainer_email='you@example.com',
-    description='Ground-side MAVLink bridge and controllers (ament_python)',
+    description='Ground-side MAVLink bridge and controllers (ament_python) with nav commands',
     license='MIT',
     entry_points={
         'console_scripts': [
@@ -25,6 +25,9 @@ setup(
             'mixer_node = payload_ground_stack.mixer_node:main',
             'mixer4_node = payload_ground_stack.mixer4_node:main',
             'mixer4_node_x = payload_ground_stack.mixer4_node_x:main',
+            'nav_to = payload_ground_stack.nav_to:main',
+            'nav_to_ned = payload_ground_stack.nav_to_ned:main',
+            'nav_here = payload_ground_stack.nav_here:main',
         ],
     },
 )
