@@ -59,6 +59,9 @@ class PayloadMavBridge(Node):
         self.create_timer(0.02, self.poll)  # 50 Hz
         self.create_timer(1.0,  self.send_heartbeat)
 
+        self.last_ned = None
+        self.last_t = None
+
     # Heartbeat
     def send_heartbeat(self):
         self.mav.mav.heartbeat_send(
@@ -110,6 +113,9 @@ class PayloadMavBridge(Node):
         p = Point(); p.x=float(n); p.y=float(e); p.z=float(d)
         self.pub_target_ned.publish(p)
 
+    def h_from_qnh(self, hpa: float) -> float:
+        return 44330.0 * (1.0 - (hpa / self.qnh) ** 0.190284)
+
     # MAVLink polling
     def poll(self):
         for _ in range(20):
@@ -135,6 +141,16 @@ class PayloadMavBridge(Node):
                 d = (alt - self.alt0)
                 pose = Point(); pose.x = float(n); pose.y = float(e); pose.z = float(d)
                 self.pub_pose.publish(pose)
+                now = self.get_clock().now().nanoseconds * 1e-9
+                if self.last_ned is not None and self.last_t is not None:
+                    dn = n - self.last_ned[0]
+                    de = e - self.last_ned[1]
+                    dt = max(1e-3, now - self.last_t)
+                    V = (dn*dn + de*de) ** 0.5 / dt  # m/s ground speed
+                    vmsg = Float32(); vmsg.data = float(V)
+                    self.pub_vel.publish(vmsg)
+                self.last_ned = (n, e, d)
+                self.last_t = now
 
 def main():
     rclpy.init()
