@@ -8,7 +8,7 @@ This repo includes:
 ## Build steps (ROS 2)
 ```bash
 # From your ROS 2 workspace root 
-# Put this folder under src/:  ~/payloadDrop/src/payload_ground_stack
+# Put this folder under src/
 pip install pymavlink
 colcon build --packages-select payload_ground_stack
 . install/setup.bash
