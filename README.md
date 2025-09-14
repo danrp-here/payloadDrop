@@ -59,3 +59,18 @@ You can watch the active target on:
 - `/state/pose_ned` (current NED position)
 
 Tip: Wait until the bridge logs **"NED origin set"** before using `nav_to` (LLA).
+
+## Wiring for ESP 32
+
+```bash
+ESP32 DevKitC ←→ SiK Air Radio (433 MHz)
+-------------------------------------------
+GPIO27 (TX2) → RADIO RX (3.3 V TTL)
+GPIO26 (RX2) ← RADIO TX (3.3 V TTL)
+GND ↔ GND (common)
++5 V (from BEC) → RADIO VCC (check radio spec; many accept 5–6 V)
+
+
+Servos (x4) from separate 5 V BEC; share GND with ESP32 & radio.
+IMU (I2C 21/22) and GPS (UART1 16/17) same as previous build.
+```
