@@ -70,7 +70,25 @@ GPIO26 (RX2) ← RADIO TX (3.3 V TTL)
 GND ↔ GND (common)
 +5 V (from BEC) → RADIO VCC (check radio spec; many accept 5–6 V)
 
+GPS module ↔ ESP32 (UART1 remapped)
+---------------------------------------------
+GPS TX → GPIO16 (ESP32 RX1)
+GPS RX (opt) ← GPIO17 (ESP32 TX1)
+VCC (3.3/5V) & GND as per module (common GND)
 
-Servos (x4) from separate 5 V BEC; share GND with ESP32 & radio.
-IMU (I2C 21/22) and GPS (UART1 16/17) same as previous build.
+
+IMU (MPU6050) ↔ ESP32 (I2C)
+---------------------------------------------
+SDA ↔ GPIO21
+SCL ↔ GPIO22
+3.3 V & GND (common GND)
+
+
+Servos (x4) — LEDC PWM @ 50 Hz (separate BEC)
+---------------------------------------------
+Servo1 signal ← GPIO14
+Servo2 signal ← GPIO15
+Servo3 signal ← GPIO4
+Servo4 signal ← GPIO5
+Servos power from BEC (5–6 V), GND tied to ESP32 GND
 ```
